@@ -1,4 +1,4 @@
-name: CI_new132
+name: CI_new133
 
 on:
   release:
@@ -73,7 +73,9 @@ jobs:
             echo "Deleting image version with ID: $VERSION_ID"
             DELETE_RESPONSE=$(curl -s -X DELETE -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/NikGor/packages/container/ci_test/versions/$VERSION_ID")
             echo "Delete Response: $DELETE_RESPONSE"
-            if echo "$DELETE_RESPONSE" | grep -q '"message"'; then
+            if [[ -z "$DELETE_RESPONSE" ]]; then
+              echo "Image version $VERSION_ID deleted successfully."
+            elif echo "$DELETE_RESPONSE" | grep -q '"message"'; then
               echo "Error: Failed to delete the image version. Response: $DELETE_RESPONSE"
               exit 1
             fi
@@ -81,3 +83,8 @@ jobs:
             echo "No image version found to delete or unable to parse VERSION_ID."
             exit 1
           fi
+
+          # Проверка оставшихся версий после удаления
+          echo "Fetching list of versions after deletion to confirm..."
+          NEW_RESPONSE=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/NikGor/packages/container/ci_test/versions")
+          echo "Updated list of versions: $NEW_RESPONSE"
