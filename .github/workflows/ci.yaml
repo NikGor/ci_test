@@ -1,4 +1,4 @@
-name: CI_new134
+name: CI_new135
 
 on:
   release:
@@ -26,28 +26,17 @@ jobs:
 
       - name: Build and push Docker image for release
         env:
-          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/ci_test
+          IMAGE_NAME: ghcr.io/witglobal/pico-boilerplate
         run: |
-          IMAGE_NAME_LOWER=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
           TAG="${{ github.event.release.tag_name }}"
-          
-          # Проверка на допустимый формат тэга (a.b.c)
-          if [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            IS_VERSION_TAG=true
-          else
-            IS_VERSION_TAG=false
-          fi
-
           echo "Building Docker image with tag: $TAG"
-          docker build --platform linux/amd64 -t "$IMAGE_NAME_LOWER:$TAG" .
+          docker build --platform linux/amd64 --build-arg ARCH=amd64 -t "$IMAGE_NAME:$TAG" .
           echo "Pushing Docker image with tag: $TAG"
-          docker push "$IMAGE_NAME_LOWER:$TAG"
-
-          # Если тег соответствует шаблону a.b.c, добавляем тег latest
-          if [ "$IS_VERSION_TAG" = true ]; then
+          docker push "$IMAGE_NAME:$TAG"
+          if [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Tag matches version pattern. Tagging as latest."
-            docker tag "$IMAGE_NAME_LOWER:$TAG" "$IMAGE_NAME_LOWER:latest"
-            docker push "$IMAGE_NAME_LOWER:latest"
+            docker tag "$IMAGE_NAME:$TAG" "$IMAGE_NAME:latest"
+            docker push "$IMAGE_NAME:latest"
           else
             echo "Tag does not match version pattern. Skipping latest tag."
           fi
