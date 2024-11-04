@@ -1,4 +1,4 @@
-name: CI_new137
+name: CI_new138
 
 on:
   release:
@@ -21,12 +21,14 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Log in to GitHub Container Registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin || { echo "Error: Failed to authenticate to GitHub Container Registry."; exit 1; }
 
       - name: Build and push Docker image for release
         env:
-          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner | tolower }}/${{ github.event.repository.name | tolower }}
         run: |
           TAG="${{ github.event.release.tag_name }}"
           echo "Building Docker image with tag: $TAG"
