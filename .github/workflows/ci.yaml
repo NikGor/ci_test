@@ -1,4 +1,4 @@
-name: CI_new143
+name: CI_new144
 
 on:
   release:
@@ -44,48 +44,48 @@ jobs:
             echo "Tag does not match version pattern. Skipping latest tag."
           fi
 
-  rollback:
-    if: github.event.action == 'deleted'
-    runs-on: ubuntu-latest
+rollback:
+  if: github.event.action == 'deleted'
+  runs-on: ubuntu-latest
 
-    steps:
-      - name: Log in to GitHub Container Registry
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin || { echo "Error: Failed to authenticate to GitHub Container Registry."; exit 1; }
+  steps:
+    - name: Log in to GitHub Container Registry
+      run: |
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin || { echo "Error: Failed to authenticate to GitHub Container Registry."; exit 1; }
 
-      - name: Delete Docker image with release tag
-        env:
-          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/ci_test
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          IMAGE_NAME_LOWER=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
-          TAG="${{ github.event.release.tag_name }}"
+    - name: Delete Docker image with release tag
+      env:
+        IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/ci_test
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        IMAGE_NAME_LOWER=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+        TAG="${{ github.event.release.tag_name }}"
 
-          echo "Fetching image versions to find and delete tag: $TAG"
-          RESPONSE=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/${{ github.repository_owner }}/packages/container/${IMAGE_NAME_LOWER#*/}/versions")
-          
-          echo "Curl API Response: $RESPONSE"
+        echo "Fetching image versions to find and delete tag: $TAG"
+        RESPONSE=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/${{ github.repository_owner }}/packages/container/${IMAGE_NAME_LOWER#*/}/versions")
+        
+        echo "Curl API Response: $RESPONSE"
 
-          # Проверяем, что RESPONSE содержит JSON-массив, а не сообщение об ошибке
-          if echo "$RESPONSE" | grep -q '"message"'; then
-            echo "Error: GitHub API returned an error message. Response: $RESPONSE"
+        # Check if RESPONSE contains a JSON array and not an error message
+        if echo "$RESPONSE" | grep -q '"message"'; then
+          echo "Error: GitHub API returned an error message. Response: $RESPONSE"
+          exit 1
+        fi
+
+        # Find VERSION_ID for the specified tag
+        VERSION_ID=$(echo "$RESPONSE" | jq -r --arg TAG "$TAG" '.[] | select(.metadata.container.tags[] == $TAG) | .id')
+
+        if [ -n "$VERSION_ID" ] && [ "$VERSION_ID" != "null" ]; then
+          echo "Deleting image version with ID: $VERSION_ID for tag: $TAG"
+          DELETE_RESPONSE=$(curl -s -X DELETE -H "Accept: application/vnd.github.package-deletes-preview+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/${{ github.repository_owner }}/packages/container/${IMAGE_NAME_LOWER#*/}/versions/$VERSION_ID")
+          echo "Delete Response: $DELETE_RESPONSE"
+          if echo "$DELETE_RESPONSE" | grep -q '"message"'; then
+            echo "Error: Failed to delete the image version. Response: $DELETE_RESPONSE"
             exit 1
-          fi
-
-          # Находим VERSION_ID для указанного тега
-          VERSION_ID=$(echo "$RESPONSE" | jq -r --arg TAG "$TAG" '.[] | select(.metadata.container.tags[] == $TAG) | .id')
-
-          if [ -n "$VERSION_ID" ] && [ "$VERSION_ID" != "null" ]; then
-            echo "Deleting image version with ID: $VERSION_ID for tag: $TAG"
-            DELETE_RESPONSE=$(curl -s -X DELETE -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/${{ github.repository_owner }}/packages/container/${IMAGE_NAME_LOWER#*/}/versions/$VERSION_ID")
-            echo "Delete Response: $DELETE_RESPONSE"
-            if echo "$DELETE_RESPONSE" | grep -q '"message"'; then
-              echo "Error: Failed to delete the image version. Response: $DELETE_RESPONSE"
-              exit 1
-            else
-              echo "Image version $VERSION_ID deleted successfully."
-            fi
           else
-            echo "No image version found with tag $TAG or unable to parse VERSION_ID."
-            exit 1
+            echo "Image version $VERSION_ID deleted successfully."
           fi
+        else
+          echo "No image version found with tag $TAG or unable to parse VERSION_ID."
+          exit 1
+        fi
