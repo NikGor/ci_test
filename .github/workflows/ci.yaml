@@ -1,4 +1,4 @@
-name: CI_new130
+name: CI_new131
 
 on:
   release:
@@ -58,7 +58,7 @@ jobs:
         run: |
           IMAGE_NAME_LOWER=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
           echo "Fetching list of versions with curl..."
-          RESPONSE=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/${IMAGE_NAME_LOWER#*/}/versions")
+          RESPONSE=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/${{ github.repository_owner }}/packages/container/${IMAGE_NAME_LOWER#*/}/versions")
           
           echo "Curl API Response: $RESPONSE"
 
@@ -73,7 +73,7 @@ jobs:
           VERSION_ID=$(echo "$RESPONSE" | jq -r '.[0].id')
           if [ -n "$VERSION_ID" ] && [ "$VERSION_ID" != "null" ]; then
             echo "Deleting image version with ID: $VERSION_ID"
-            DELETE_RESPONSE=$(curl -s -X DELETE -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/${IMAGE_NAME_LOWER#*/}/versions/$VERSION_ID")
+            DELETE_RESPONSE=$(curl -s -X DELETE -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/${{ github.repository_owner }}/packages/container/${IMAGE_NAME_LOWER#*/}/versions/$VERSION_ID")
             echo "Delete Response: $DELETE_RESPONSE"
             if echo "$DELETE_RESPONSE" | grep -q '"message"'; then
               echo "Error: Failed to delete the image version. Response: $DELETE_RESPONSE"
@@ -83,3 +83,4 @@ jobs:
             echo "No image version found to delete or unable to parse VERSION_ID."
             exit 1
           fi
+
