@@ -1,4 +1,4 @@
-name: CI_new141
+name: CI_new142
 
 on:
   release:
@@ -66,6 +66,13 @@ jobs:
           
           echo "Curl API Response: $RESPONSE"
 
+          # Проверяем, что RESPONSE содержит JSON-массив, а не сообщение об ошибке
+          if echo "$RESPONSE" | grep -q '"message"'; then
+            echo "Error: GitHub API returned an error message. Response: $RESPONSE"
+            exit 1
+          fi
+
+          # Находим VERSION_ID для указанного тега
           VERSION_ID=$(echo "$RESPONSE" | jq -r --arg TAG "$TAG" '.[] | select(.metadata.container.tags[] == $TAG) | .id')
 
           if [ -n "$VERSION_ID" ] && [ "$VERSION_ID" != "null" ]; then
