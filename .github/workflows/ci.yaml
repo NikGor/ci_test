@@ -1,4 +1,4 @@
-name: CI_new148
+name: CI_new149
 
 on:
   release:
@@ -93,9 +93,9 @@ jobs:
             exit 1
           fi
   
-          # Find previous version to assign latest tag
+          # Find the most recent version to assign 'latest' tag, excluding the deleted version
           echo "Searching for previous version to assign 'latest' tag"
-          PREVIOUS_VERSION_ID=$(echo "$RESPONSE" | jq -r --arg TAG "$TAG" '.[] | select(.metadata.container.tags[] != $TAG and (.metadata.container.tags[] | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))) | .id' | head -n 1)
+          PREVIOUS_VERSION_ID=$(echo "$RESPONSE" | jq -r --arg TAG "$TAG" '.[] | select(.id != $VERSION_ID and .metadata.container.tags[] | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .id' | head -n 1)
   
           if [ -n "$PREVIOUS_VERSION_ID" ] && [ "$PREVIOUS_VERSION_ID" != "null" ]; then
             echo "Assigning 'latest' tag to version ID: $PREVIOUS_VERSION_ID"
