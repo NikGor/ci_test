@@ -9,6 +9,7 @@ packages = [{include = "2024"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 logging = "^0.4.9.6"
+jr = "^0.1.1.5"
 
 
 [build-system]
