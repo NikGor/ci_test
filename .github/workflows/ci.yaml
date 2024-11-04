@@ -1,4 +1,4 @@
-name: CI_new146
+name: CI_new147
 
 on:
   release:
@@ -65,7 +65,7 @@ jobs:
           TAG="${{ github.event.release.tag_name }}"
   
           echo "Fetching image versions to find and delete tag: $TAG"
-          RESPONSE=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/${{ github.repository_owner }}/packages/container/${IMAGE_NAME_LOWER#*/}/versions")
+          RESPONSE=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/NikGor/packages/container/ci_test/versions")
           
           echo "Curl API Response: $RESPONSE"
   
@@ -80,7 +80,7 @@ jobs:
   
           if [ -n "$VERSION_ID" ] && [ "$VERSION_ID" != "null" ]; then
             echo "Deleting image version with ID: $VERSION_ID for tag: $TAG"
-            DELETE_RESPONSE=$(curl -s -X DELETE -H "Accept: application/vnd.github.package-deletes-preview+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/${{ github.repository_owner }}/packages/container/${IMAGE_NAME_LOWER#*/}/versions/$VERSION_ID")
+            DELETE_RESPONSE=$(curl -s -X DELETE -H "Accept: application/vnd.github.package-deletes-preview+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/NikGor/packages/container/ci_test/versions/$VERSION_ID")
             echo "Delete Response: $DELETE_RESPONSE"
             if echo "$DELETE_RESPONSE" | grep -q '"message"'; then
               echo "Error: Failed to delete the image version. Response: $DELETE_RESPONSE"
