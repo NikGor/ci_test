@@ -1,0 +1,83 @@
+name: CI_new128
+
+on:
+  release:
+    types: [created, deleted]
+
+permissions:
+  packages: write, delete
+  contents: read
+
+jobs:
+  release-push:
+    if: github.event.action == 'created'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GHCR_SECRET }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin || { echo "Error: Failed to authenticate to GitHub Container Registry."; exit 1; }
+
+      - name: Build and push Docker image for release
+        env:
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/your-image-name
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          echo "Building Docker image with tag: $TAG"
+          docker build --platform linux/amd64 --build-arg ARCH=amd64 -t "$IMAGE_NAME:$TAG" .
+          echo "Pushing Docker image with tag: $TAG"
+          docker push "$IMAGE_NAME:$TAG"
+          if [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag matches version pattern. Tagging as latest."
+            docker tag "$IMAGE_NAME:$TAG" "$IMAGE_NAME:latest"
+            docker push "$IMAGE_NAME:latest"
+          else
+            echo "Tag does not match version pattern. Skipping latest tag."
+          fi
+
+  retag-latest:
+    if: github.event.action == 'deleted'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GHCR_SECRET }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin || { echo "Error: Failed to authenticate to GitHub Container Registry."; exit 1; }
+
+      - name: Delete the Last Image Version
+        env:
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/your-image-name
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Deleting the last version of the image: $IMAGE_NAME"
+          echo "Fetching list of versions..."
+          RESPONSE=$(gh api -H "Accept: application/vnd.github+json" "/orgs/${{ github.repository_owner }}/packages/container/${IMAGE_NAME#*/}/versions" -H "Authorization: token $GH_TOKEN" 2>&1)
+          echo "API Response: $RESPONSE"
+
+          if [[ -z "$RESPONSE" ]]; then
+            echo "Error: API response is empty."
+            exit 1
+          elif echo "$RESPONSE" | grep -q '"message"'; then
+            echo "Error: GitHub API returned an error message. Response: $RESPONSE"
+            exit 1
+          fi
+
+          VERSION_ID=$(echo "$RESPONSE" | jq -r '.[0].id')
+          if [ -n "$VERSION_ID" ] && [ "$VERSION_ID" != "null" ]; then
+            echo "Deleting image version with ID: $VERSION_ID"
+            DELETE_RESPONSE=$(gh api --method DELETE -H "Accept: application/vnd.github+json" "/orgs/${{ github.repository_owner }}/packages/container/${IMAGE_NAME#*/}/versions/$VERSION_ID" -H "Authorization: token $GH_TOKEN" 2>&1)
+            echo "Delete Response: $DELETE_RESPONSE"
+            if echo "$DELETE_RESPONSE" | grep -q '"message"'; then
+              echo "Error: Failed to delete the image version. Response: $DELETE_RESPONSE"
+              exit 1
+            fi
+          else
+            echo "No image version found to delete or unable to parse VERSION_ID."
+            exit 1
+          fi

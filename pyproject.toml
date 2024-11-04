@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "2024-11-04"
+version = "0.1.0"
+description = ""
+authors = ["Nikolaj Gordienko <nicolas.gordienko@gmail.com>"]
+readme = "README.md"
+packages = [{include = "2024"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+logging = "^0.4.9.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
