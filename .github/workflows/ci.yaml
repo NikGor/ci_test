@@ -1,4 +1,4 @@
-name: CI_new149
+name: CI_new150
 
 on:
   release:
@@ -95,8 +95,8 @@ jobs:
   
           # Find the most recent version to assign 'latest' tag, excluding the deleted version
           echo "Searching for previous version to assign 'latest' tag"
-          PREVIOUS_VERSION_ID=$(echo "$RESPONSE" | jq -r --arg TAG "$TAG" '.[] | select(.id != $VERSION_ID and .metadata.container.tags[] | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .id' | head -n 1)
-  
+          PREVIOUS_VERSION_ID=$(echo "$RESPONSE" | jq -r --arg VERSION_ID "$VERSION_ID" '.[] | select(.id != ($VERSION_ID | tonumber) and .metadata.container.tags[] | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .id' | head -n 1)
+          
           if [ -n "$PREVIOUS_VERSION_ID" ] && [ "$PREVIOUS_VERSION_ID" != "null" ]; then
             echo "Assigning 'latest' tag to version ID: $PREVIOUS_VERSION_ID"
             TAG_UPDATE_RESPONSE=$(curl -s -X PATCH -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" \
