@@ -1,4 +1,4 @@
-name: CI_new145
+name: CI_new146
 
 on:
   release:
@@ -49,6 +49,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
       - name: Log in to GitHub Container Registry
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin || { echo "Error: Failed to authenticate to GitHub Container Registry."; exit 1; }
@@ -62,7 +65,7 @@ jobs:
           TAG="${{ github.event.release.tag_name }}"
   
           echo "Fetching image versions to find and delete tag: $TAG"
-          RESPONSE=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/${{ github.repository_owner }}/ci_test/packages/container/${IMAGE_NAME_LOWER#*/}/versions")
+          RESPONSE=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/${{ github.repository_owner }}/packages/container/${IMAGE_NAME_LOWER#*/}/versions")
           
           echo "Curl API Response: $RESPONSE"
   
