@@ -1,4 +1,4 @@
-name: CI_new151
+name: CI_new152
 
 on:
   release:
@@ -53,10 +53,12 @@ jobs:
         run: sudo apt-get install -y jq
 
       - name: Log in to GitHub Container Registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin || { echo "Error: Failed to authenticate to GitHub Container Registry."; exit 1; }
 
-      - name: Delete Docker image with release tag and update latest
+      - name: Fetch previous version to assign 'latest' tag
         env:
           IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/ci_test
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -94,18 +96,25 @@ jobs:
           fi
   
           # Find the most recent version to assign 'latest' tag, excluding the deleted version
-          echo "Searching for previous version to assign 'latest' tag"
-          PREVIOUS_VERSION_ID=$(echo "$RESPONSE" | jq -r --arg VERSION_ID "$VERSION_ID" '
+          echo "Searching for previous version to tag as 'latest'"
+          PREVIOUS_TAG=$(echo "$RESPONSE" | jq -r --arg VERSION_ID "$VERSION_ID" '
             .[] 
             | select(.id != ($VERSION_ID | tonumber) and (.metadata.container.tags[]? | select(type == "string") | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))) 
-            | .id' | head -n 1)
-          
-          if [ -n "$PREVIOUS_VERSION_ID" ] && [ "$PREVIOUS_VERSION_ID" != "null" ]; then
-            echo "Assigning 'latest' tag to version ID: $PREVIOUS_VERSION_ID"
-            TAG_UPDATE_RESPONSE=$(curl -s -X PATCH -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" \
-              -d '{"metadata": {"container": {"tags": ["latest"]}}}' \
-              "https://api.github.com/users/NikGor/packages/container/ci_test/versions/$PREVIOUS_VERSION_ID")
-            echo "Tag Update Response: $TAG_UPDATE_RESPONSE"
+            | .metadata.container.tags[0]' | head -n 1)
+  
+          if [ -n "$PREVIOUS_TAG" ] && [ "$PREVIOUS_TAG" != "null" ]; then
+            echo "Found previous version tag: $PREVIOUS_TAG"
           else
-            echo "No previous version found to assign 'latest' tag."
+            echo "No previous version found to tag as 'latest'."
+            exit 1
           fi
+
+      - name: Build and push Docker image with 'latest' tag based on previous version
+        if: success()  # Only run if the previous step was successful
+        run: |
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/ci_test"
+          echo "Rebuilding Docker image with previous tag: $PREVIOUS_TAG"
+          docker pull "$IMAGE_NAME:$PREVIOUS_TAG"
+          docker tag "$IMAGE_NAME:$PREVIOUS_TAG" "$IMAGE_NAME:latest"
+          echo "Pushing Docker image with 'latest' tag"
+          docker push "$IMAGE_NAME:latest"
