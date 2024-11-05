@@ -1,4 +1,4 @@
-name: CI_new152
+name: CI_new153
 
 on:
   release:
@@ -112,7 +112,10 @@ jobs:
       - name: Build and push Docker image with 'latest' tag based on previous version
         if: success()  # Only run if the previous step was successful
         run: |
-          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/ci_test"
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="ci_test"
+          IMAGE_NAME="ghcr.io/${REPO_OWNER,,}/${REPO_NAME,,}"
+          
           echo "Rebuilding Docker image with previous tag: $PREVIOUS_TAG"
           docker pull "$IMAGE_NAME:$PREVIOUS_TAG"
           docker tag "$IMAGE_NAME:$PREVIOUS_TAG" "$IMAGE_NAME:latest"
