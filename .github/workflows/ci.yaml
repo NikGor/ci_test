@@ -1,4 +1,4 @@
-name: CI_new153
+name: CI_new154
 
 on:
   release:
@@ -110,12 +110,17 @@ jobs:
           fi
 
       - name: Build and push Docker image with 'latest' tag based on previous version
-        if: success()  # Only run if the previous step was successful
+        if: success()
         run: |
           REPO_OWNER="${{ github.repository_owner }}"
           REPO_NAME="ci_test"
           IMAGE_NAME="ghcr.io/${REPO_OWNER,,}/${REPO_NAME,,}"
           
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "Error: PREVIOUS_TAG is empty. Cannot proceed with rebuilding the Docker image."
+            exit 1
+          fi
+      
           echo "Rebuilding Docker image with previous tag: $PREVIOUS_TAG"
           docker pull "$IMAGE_NAME:$PREVIOUS_TAG"
           docker tag "$IMAGE_NAME:$PREVIOUS_TAG" "$IMAGE_NAME:latest"
