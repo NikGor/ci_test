@@ -1,4 +1,4 @@
-name: CI_new155
+name: CI_new156
 
 on:
   release:
@@ -63,7 +63,7 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin || { echo "Error: Failed to authenticate to GitHub Container Registry."; exit 1; }
 
       - name: Fetch previous version to assign 'latest' tag
-        id: fetch_previous_tag  # Добавляем ID шага, чтобы передать переменную
+        id: fetch_previous_tag
         run: |
           IMAGE_NAME_LOWER=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
           TAG="${{ github.event.release.tag_name }}"
@@ -71,16 +71,13 @@ jobs:
           echo "Fetching image versions to find and delete tag: $TAG"
           RESPONSE=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/NikGor/packages/container/ci_test/versions")
           
-          # Проверяем наличие ошибки в ответе
           if echo "$RESPONSE" | grep -q '"message"'; then
             echo "Error: GitHub API returned an error message. Response: $RESPONSE"
             exit 1
           fi
   
-          # Ищем VERSION_ID для указанного тега
           VERSION_ID=$(echo "$RESPONSE" | jq -r --arg TAG "$TAG" '.[] | select(.metadata.container.tags[] == $TAG) | .id')
   
-          # Удаление текущего образа, если он найден
           if [ -n "$VERSION_ID" ] && [ "$VERSION_ID" != "null" ]; then
             curl -s -X DELETE -H "Accept: application/vnd.github.package-deletes-preview+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/users/NikGor/packages/container/ci_test/versions/$VERSION_ID"
             echo "Deleted image with ID: $VERSION_ID"
@@ -89,7 +86,6 @@ jobs:
             exit 1
           fi
   
-          # Находим предыдущий тег
           PREVIOUS_TAG=$(echo "$RESPONSE" | jq -r --arg VERSION_ID "$VERSION_ID" '
             .[] 
             | select(.id != ($VERSION_ID | tonumber) and (.metadata.container.tags[]? | select(type == "string") | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))) 
@@ -101,7 +97,7 @@ jobs:
       - name: Build and push Docker image with 'latest' tag based on previous version
         if: success()
         env:
-          PREVIOUS_TAG: ${{ steps.fetch_previous_tag.outputs.previous_tag }}  # Используем результат из предыдущего шага
+          PREVIOUS_TAG: ${{ steps.fetch_previous_tag.outputs.previous_tag }}
         run: |
           REPO_OWNER="${{ github.repository_owner }}"
           REPO_NAME="ci_test"
